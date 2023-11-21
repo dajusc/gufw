@@ -192,22 +192,12 @@ class Add:
         self.tabs.set_current_page(2)
     
     def _set_advanced_addBtn_control(self, ntab):
-        # Not allow Both Protocol with a range of ports in Simple and Advanced tab
-        if ntab == 2 and (':' in self.advanced_to_port.get_text() or ':' in self.advanced_from_port.get_text()) and not self.advanced_protocol.get_active():
-            self.add_btn.set_sensitive(False)
-            self.add_btn.set_tooltip_text(_("Choose a TCP or UDP Protocol with a range of ports"))
-        else:
-            self.add_btn.set_sensitive(True)
-            self.add_btn.set_tooltip_text('')
+        self.add_btn.set_sensitive(True)
+        self.add_btn.set_tooltip_text('')
     
     def _set_simple_addBtn_control(self, ntab):
-        # Not allow Both Protocol with a range of ports in Simple and Advanced tab
-        if ntab == 1 and ':' in self.simple_port.get_text() and not self.simple_protocol.get_active():
-            self.add_btn.set_sensitive(False)
-            self.add_btn.set_tooltip_text(_("Choose a TCP or UDP Protocol with a range of ports"))
-        else:
-            self.add_btn.set_sensitive(True)
-            self.add_btn.set_tooltip_text('')
+        self.add_btn.set_sensitive(True)
+        self.add_btn.set_tooltip_text('')
     
     def on_addTabs_switch_page(self, widget, data=None, change_to_ntab=None):
         if change_to_ntab == 1:
@@ -441,16 +431,23 @@ class Add:
         if self.simple_port.get_text().upper() == 'PRISM':
             self.gufw.show_dialog(self.win_add, _("Edward Snowden's Greatest Fear"), _('"Nothing Will Change"'))
             return
-        
-        self._add(self.gufw.frontend.get_profile(),                                 # profile
-                 self.simple_rule_name.get_text(),                            # name
-                 self.gufw.NUM2POLICY[self.simple_policy.get_active()],       # policy
-                 self.gufw.NUM2DIRECTION[self.simple_direction.get_active()], # direction
-                 self.gufw.NUM2PROTO[self.simple_protocol.get_active()],      # protocol
-                 '',                                                          # from IP
-                 '',                                                          # from port
-                 '',                                                          # to IP
-                 self.simple_port.get_text())                                 # to port
+
+        proto = self.gufw.NUM2PROTO[self.simple_protocol.get_active()]
+        if proto.strip() == "" and ":" in self.simple_port.get_text():
+            protos = ["tcp", "udp"] # split into two ufw commands, one per protocol
+        else:
+            protos = [proto] # one ufw command for the selected protocol
+
+        for proto in protos:
+            self._add(self.gufw.frontend.get_profile(),                           # profile
+                     self.simple_rule_name.get_text(),                            # name
+                     self.gufw.NUM2POLICY[self.simple_policy.get_active()],       # policy
+                     self.gufw.NUM2DIRECTION[self.simple_direction.get_active()], # direction
+                     proto,                                                       # protocol
+                     '',                                                          # from IP
+                     '',                                                          # from port
+                     '',                                                          # to IP
+                     self.simple_port.get_text())                                 # to port
         self.gufw.print_rules(self.gufw.frontend.get_rules())
     
     def _add_rule_advanced(self):
@@ -471,26 +468,33 @@ class Add:
         # Translators: About traffic
         if self.advanced_routed.get_sensitive() and self.advanced_routed.get_active_text() != _("Not Forward"):
             routed = self.advanced_routed.get_active_text()
-        
+
+        proto = self.gufw.NUM2PROTO[self.advanced_protocol.get_active()]
         to_ip = to_port = from_ip = from_port = ''
         from_ip = self.advanced_from_ip.get_text()
         from_port = self.advanced_from_port.get_text()
         to_ip = self.advanced_to_ip.get_text()
         to_port = self.advanced_to_port.get_text()
-        
-        self._add(self.gufw.frontend.get_profile(),                                   # profile
-                 self.advanced_rule_name.get_text(),                            # name
-                 self.gufw.NUM2POLICY[self.advanced_policy.get_active()],       # policy
-                 self.gufw.NUM2DIRECTION[self.advanced_direction.get_active()], # direction
-                 self.gufw.NUM2PROTO[self.advanced_protocol.get_active()],      # protocol
-                 from_ip,                                                       # from IP
-                 from_port,                                                     # from port
-                 to_ip,                                                         # to IP
-                 to_port,                                                       # to port
-                 insert,                                                        # insert number
-                 iface,                                                         # interface
-                 routed,                                                        # routed
-                 self.gufw.NUM2LOGGING[self.advanced_log.get_active()])         # logging        
+
+        if proto.strip() == "" and (":" in from_port or ":" in to_port):
+            protos = ["tcp", "udp"] # split into two ufw commands, one per protocol
+        else:
+            protos = [proto] # one ufw command for the selected protocol
+
+        for proto in protos:
+            self._add(self.gufw.frontend.get_profile(),                             # profile
+                     self.advanced_rule_name.get_text(),                            # name
+                     self.gufw.NUM2POLICY[self.advanced_policy.get_active()],       # policy
+                     self.gufw.NUM2DIRECTION[self.advanced_direction.get_active()], # direction
+                     proto,                                                         # protocol
+                     from_ip,                                                       # from IP
+                     from_port,                                                     # from port
+                     to_ip,                                                         # to IP
+                     to_port,                                                       # to port
+                     insert,                                                        # insert number
+                     iface,                                                         # interface
+                     routed,                                                        # routed
+                     self.gufw.NUM2LOGGING[self.advanced_log.get_active()])         # logging
         self.gufw.print_rules(self.gufw.frontend.get_rules())
 
 
